@@ -288,6 +288,54 @@ The two files share 10,299 unique `accepted_gbif_id` values; 10,902 EDGE rows ha
 
 ---
 
+## What to display on the FotW taxon page
+
+Of the 22 EDGE source columns, only a subset is meaningful for end users — many are MCMC sampling statistics that justify the methodology but don't belong on a public page. The recommendations below are organised by display priority. The full column glossary is in [`EDGE_CSV_data_dictionary.md`](EDGE_CSV_data_dictionary.md).
+
+### Tier 1 — show on the taxon page (initial release)
+
+| Column | Suggested label / UI treatment | Meaning |
+|---|---|---|
+| `is_edge_species` *(derived boolean)* | No badge — gates the entire EDGE panel | Computed during import: true if a matching row was found in `edge_taxonomy_complete.csv` when joining on `accepted_gbif_id` (either `record_type = edge_original`, or `record_type = gbif_accepted_new` with a resolvable `synonym_edge_keys` link). Use this as the master gate for whether the EDGE panel is rendered at all. |
+| `is_edge_list_priority` *(derived boolean)* | Badge: **"EDGE Priority Species"** | Computed during import: true if `EDGE.List = "y"`. Member of the global priority list of 9,945 species that are both threatened AND robustly above the median EDGE score. The single most actionable flag on the page. |
+| `EDGE.rank` | *"EDGE rank: #N of 335,497"* | Global rank by combined EDGE score. #1 is the top priority overall. Rank #1,140 = top 0.3%. Useful for context even when not on the priority list. |
+| `edge.med` | *"EDGE score: X.XX"* | The composite metric itself (range 0–54.9). Higher = greater conservation priority. Best paired with the rank for interpretation. |
+| `ed.med` | *"Evolutionary Distinctiveness: X Myr"* | How isolated this species is on the flowering-plant tree of life, in millions of years. Long branches with few close relatives = high ED (max 139.4 Myr for *Amborella trichopoda*). |
+| `threat` | IUCN-style tag (CR / EN / VU / NT / LC / EW / EX) with the standard IUCN colour coding; or *"Predicted: threatened / not threatened"* when from the expert panel | Either the IUCN Red List category or a modelled equivalent. Always pair with `RL.ERP` so the attribution is honest. |
+| `RL.ERP` | Small tag next to threat: *"IUCN-assessed"* (RL) or *"Modelled — Expert Review Panel"* (ERP) | Distinguishes formal IUCN assessments (49,800 species) from model predictions (285,700 species). Critical for honest presentation — predicted threat is not the same as assessed. |
+
+### Available but deferred to a future release
+
+These columns carry meaningful information and can be added to the EDGE panel in a future iteration, but are not part of the initial design.
+
+- `pext.med` — modelled probability of extinction within 100 years (the GE term in the EDGE formula, ~0.04 for LC, ~0.97 for CR).
+- `useful.plant` — has a documented economic or cultural use per Plants of the World Online (~34,400 species). Good candidate for a "documented human use" icon.
+- `EDGE.Borderline` — meets EDGE.List criteria with lower statistical confidence (50–95% of phylogenetic draws above median).
+- `EDGE.Research` — EDGE.List species lacking adequate data; flagged for targeted fieldwork or Red List assessment.
+- `EDGE.Watch` — EDGE.List species whose status is improving or stabilising but still require active monitoring.
+
+### Do not display (internal / methodological)
+
+These columns underpin the analysis but are not user-relevant. Keep them in the database for reproducibility, but do not surface them on taxon pages.
+
+- `tbl.med` — terminal branch length (Myr). Technical phylogenetics; redundant with `ed.med` for most users.
+- `above.med` — statistical robustness flag (above-median in ≥ 95% of draws). Methodological — already baked into `EDGE.List` membership.
+- `above.med.tot` — internal MCMC counter (draws above median).
+- `above.med.perc` — internal MCMC counter (proportion of draws above median).
+- `total.thr.draws` — internal MCMC counter (draws classified as threatened).
+- `perc.thr.draws` — internal MCMC counter (proportion of draws classified as threatened).
+- `thr.or.not` — binary derived from `threat`; redundant for display.
+- `in.backbone` — whether the EDGE name was on the WFO/GBIF backbone snapshot used to build the phylogeny. Internal metadata.
+
+### Design hints
+
+- Use the official IUCN palette for the threat tag (CR red, EN orange-red, VU orange, NT amber, LC green, EW/EX black). For ERP-predicted species, use a desaturated version of the same colour to signal lower certainty.
+- Where `RL.ERP = RL`, link the threat tag to the species' IUCN Red List page. Doable now via the IUCN Red List API v4; an enrichment step can attach the IUCN URL for the ~49,800 RL-assessed species.
+- For `is_edge_list_priority = true` species, consider a dedicated EDGE panel near the top of the page. For non-priority species with a notably high `EDGE.rank` (say top 10,000), a smaller inline note keeps context without implying priority.
+- `ed.med` is the most intuitive metric for a general audience (*"this species sits on a 50-million-year branch with no close relatives"*) — worth a one-line plain-language gloss next to the number.
+
+---
+
 ## Input data details
 
 ### EDGE dataset columns
